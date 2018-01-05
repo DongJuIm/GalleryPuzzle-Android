@@ -1,0 +1,308 @@
+package com.mjc.swc17002.gallerypuzzle;
+
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.EmbossMaskFilter;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.MediaStore;
+import android.support.v7.app.AppCompatActivity;
+import android.view.Display;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.Toast;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Random;
+
+public class MainActivity extends AppCompatActivity {
+
+    final static int SELECT_IMAGE = 5;
+    Bitmap gallery = null;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.main);
+
+
+    }
+    public void onClick(View v){
+
+        if (gallery == null){
+            Toast.makeText(getBaseContext(),"사진을 선택해주세요. ",Toast.LENGTH_SHORT).show();
+        }else {
+            setContentView(new GalleryPuzzle(this));
+        }
+
+
+    }
+
+public  void onClick2(View v2){
+    Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+    Intent intent = new Intent(Intent.ACTION_PICK,uri);
+    startActivityForResult(intent,SELECT_IMAGE);
+}
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+
+
+        if (resultCode == RESULT_OK && requestCode == SELECT_IMAGE){
+            Uri image  = intent.getData();
+
+            try{
+                gallery = MediaStore.Images.Media.getBitmap(getContentResolver(),image);
+
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    public void onClick3(View v3){
+    setContentView(R.layout.main);
+    }
+
+    public class GalleryPuzzle extends View {
+
+
+
+
+        final int CARD_SHOW=1;   //화면터치 시에 발생하는 다음화면을 구현하기위해 초기화
+        final int CARD_SUFFLE = 2;
+
+        int gameState = CARD_SHOW; //버튼1을 눌렀을 때, setContentView가
+                                     //이 클래스의 첫 화면 CARD_SHOW를 canvas로 그려서 보여줌.
+
+        int width,height;
+
+        int ironW,ironH;
+        int picW,picH;
+        int a,b;
+        boolean firstT = false; //첫번 째, 두번 째 터치를 구별하기 위해
+
+        int boardTmp;  //셔플 할 때 쓸 접시들
+        Bitmap firstTmp;
+        int count ; // 퍼즐이 다 맞춰졌을 때를 판별
+
+
+
+
+
+        Bitmap imgPic[][] = new Bitmap[5][3];
+
+        public int[][]  board = new int[5][3]; // 퍼즐이 다 맞춰졌는지 판별 할 보드
+
+
+
+        Rect[][] rect  = new Rect[5][3]; //rect를 가리킬 주소 생성.
+
+
+
+        public GalleryPuzzle(Context context) {
+            super(context);
+
+
+
+            Display display = ((WindowManager)context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
+            width = display.getWidth();
+            height = display.getHeight()-50;
+
+            //배경이미지를 읽어서 뷰 크기에 맞게 설정
+
+
+
+
+            gallery=Bitmap.createScaledBitmap(gallery,width,height,true);
+
+
+            ironW=gallery.getWidth();
+            ironH=gallery.getHeight();
+
+            picW = ironW/3;  //int wOneGrid (조각 이미지의 너비 높이)
+            picH = ironH/5; // int yOneGrid
+
+
+
+
+            for (int i = 0;i<5;i++){
+                for(int j = 0; j<3;j++){
+
+                    imgPic[i][j] =  Bitmap.createBitmap(gallery,j*picW,i*picH,picW,picH); //이미지의 필요한 부분만 다시 만듬
+
+                }
+            }
+
+
+
+            for(int i = 0; i < 15; i++){
+
+                int j = i / 3;
+                int k = i % 3;
+
+                board[j][k] =i;
+            }
+
+
+
+            for(int i =0; i <5;i++){
+                for(int j =0;j<3;j++){
+                    int left = j * picW;
+                    int right = left + picW;
+                    int top = i * picH;
+                    int bottom = top + picH;
+
+                    rect[i][j] = new Rect(left, top, right, bottom);
+                }
+            }
+
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+
+           Paint paint = new Paint();
+            EmbossMaskFilter emboss = new EmbossMaskFilter(new float[]{2, 2, 2}, 0.5f, 1, 1); //잘린 조각을 emboss로 표시
+            paint.setMaskFilter(emboss);
+
+
+
+         if (gameState == CARD_SHOW || gameState == CARD_SUFFLE) {
+
+
+
+                for (int i = 0; i < 5; i++) {
+                    for (int j = 0; j < 3; j++) {
+                        canvas.drawBitmap(imgPic[i][j], j * picW, i * picH, paint);
+                    }
+
+                }
+            }
+        }
+
+
+        private void Suffle(){
+            Bitmap tmp;
+            int emp;
+            int n1,n2;
+
+            Random _rand = new Random();
+
+            for(int i = 0; i < 50; i++){
+                n1 = _rand.nextInt(5);
+                n2 = _rand.nextInt(3);
+
+                tmp = imgPic[n1][n2];
+                imgPic[n1][n2] = imgPic[2][1];
+                imgPic[2][1] = tmp;
+
+                emp = board[n1][n2];
+                board[n1][n2] = board[2][1];
+                board[2][1] = emp;
+            }
+        }
+
+
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
+
+            Rect _rect;
+            int xpos = (int) event.getX();
+            int ypos = (int) event.getY();
+
+
+
+
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+
+             if (gameState == CARD_SHOW) {
+                    Suffle();
+                    gameState = CARD_SUFFLE;
+                    invalidate();
+                }else if(gameState == CARD_SUFFLE){
+
+
+                    if (firstT == false) {
+                        for (int idx = 0; idx < 15; idx++) {
+                            int i = idx / 3;
+                            int j = idx % 3;
+
+                            _rect = rect[i][j];
+                            if (_rect.contains(xpos, ypos)) {
+
+                                a = i;
+                                b = j;
+
+                                firstT = true;
+
+
+                            }
+                        }
+                    } else if(firstT==true)  {
+
+                        //두번째 터치
+
+                        for (int idx = 0; idx < 15; idx++) {
+                            int i = idx / 3;
+                            int j = idx % 3;
+
+                            _rect = rect[i][j];
+
+                            if (_rect.contains(xpos, ypos)) {
+
+                                firstTmp = imgPic[a][b];
+                                imgPic[a][b] = imgPic[i][j];
+                                imgPic[i][j] = firstTmp;
+
+                                boardTmp= board[a][b];
+                                board[a][b]= board[i][j];
+                                board[i][j] = boardTmp;
+
+                                firstT = false;
+
+                            }
+                        }
+
+                        count=0;
+
+
+                        for(int i = 0; i < 15; i++){
+
+                            int j = i / 3;
+                            int k = i % 3;
+
+                            if(board[j][k] == i){
+                                count++;
+                            }
+                        }
+
+                        String N = String.valueOf(count);
+                        Toast.makeText(getContext(),N,Toast.LENGTH_SHORT).show();
+
+
+                        if(count==15)
+
+                        setContentView(R.layout.end);
+                    }
+
+
+                    invalidate();
+
+
+
+                }
+            }
+            return false;
+        }
+    }
+
+}
